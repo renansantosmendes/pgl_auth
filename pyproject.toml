@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pgl-auth"
+version = "0.1.0"
+description = "Cliente de autenticação para alunos acessarem o proxy de modelos de IA da disciplina."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Renan Santos Mendes", email = "renansantosmendes@gmail.com" },
+]
+dependencies = [
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+admin = [
+    "psycopg2-binary>=2.9",
+    "python-dotenv>=1.0",
+    "bcrypt>=4.2",
+]
+
+[project.urls]
+Homepage = "https://github.com/renansantosmendes/pgl_auth"
+
+[project.scripts]
+pgl-auth = "pgl_auth.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pgl_auth"]

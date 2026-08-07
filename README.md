@@ -1,0 +1,86 @@
+# pgl_auth
+
+Pacote Python para autenticação de alunos (matrícula + senha) e emissão de um token JWT
+de curta duração (4 horas) para acesso ao proxy dos modelos de IA usado na disciplina.
+
+## Componentes deste repositório
+
+- `src/pgl_auth/` — pacote publicado no PyPI, instalado pelos alunos (`pip install pgl-auth`).
+- `api/login.py` — API serverless (FastAPI) hospedada no Vercel, valida matrícula/senha no
+  Postgres e emite o JWT. Nenhuma credencial do banco fica no pacote instalado pelos alunos.
+- `db/schema.sql` — schema `pgl_auth` e tabela `pgl_auth.students`.
+- `db/migrate.py` — aplica `schema.sql` no banco (usa `NEON_DATABASE_URL` do `.env`).
+- `db/create_student.py` — cria/atualiza a senha de um aluno (hash bcrypt).
+- `.github/workflows/publish.yml` — CI que publica o pacote no PyPI a cada release do GitHub.
+
+## Uso pelo aluno
+
+```bash
+pip install pgl-auth
+```
+
+```python
+from pgl_auth import PGLAuthClient
+
+client = PGLAuthClient()  # usa PGL_AUTH_API_URL ou o default do Vercel
+token = client.login("2021012345", "minha_senha")
+
+# usar o token para chamar o proxy dos modelos
+headers = client.auth_header()  # {"Authorization": "Bearer <token>"}
+```
+
+Ou via linha de comando:
+
+```bash
+pgl-auth 2021012345
+```
+
+## Estrutura da tabela `pgl_auth.students`
+
+| coluna          | tipo          | descrição                                   |
+|------------------|---------------|----------------------------------------------|
+| `id`             | UUID (PK)     | identificador único, gerado automaticamente   |
+| `matricula`      | TEXT (UNIQUE) | matrícula do aluno                            |
+| `password_hash`  | TEXT          | hash bcrypt da senha (nunca texto puro)       |
+| `is_active`      | BOOLEAN       | se o aluno pode autenticar                    |
+| `updated_at`     | TIMESTAMPTZ   | atualizado automaticamente via trigger         |
+
+## Provisionar o banco
+
+```bash
+pip install -e ".[admin]"
+python db/migrate.py                 # cria schema + tabela
+python db/create_student.py 2021012345   # cadastra/atualiza um aluno (pede a senha)
+```
+
+## Deploy da API no Vercel
+
+1. Importe este repositório no Vercel (Project → Add New → Project).
+2. Configure as variáveis de ambiente do projeto no Vercel:
+   - `NEON_DATABASE_URL`
+   - `JWT_SECRET_KEY`
+3. Deploy automático a cada push (o Vercel detecta `api/login.py` + `api/requirements.txt`
+   via `vercel.json` e cria a função serverless em `/api/login`).
+4. Atualize `DEFAULT_API_URL` em `src/pgl_auth/client.py` (ou oriente os alunos a definir
+   `PGL_AUTH_API_URL`) com a URL final do deploy.
+
+## Publicar o pacote no PyPI
+
+O workflow `.github/workflows/publish.yml` publica automaticamente quando uma **release**
+é criada no GitHub, usando [Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+(OIDC) — não é preciso guardar token do PyPI como secret.
+
+Configuração única no PyPI (depois que o projeto `pgl-auth` existir lá, ou via
+"pending publisher" antes do primeiro publish):
+
+1. pypi.org → Your projects → `pgl-auth` → Publishing → Add a new publisher.
+2. Owner: `renansantosmendes`, Repository: `pgl_auth`, Workflow: `publish.yml`,
+   Environment: `pypi`.
+
+Para publicar uma nova versão:
+
+```bash
+# atualizar version em pyproject.toml
+git tag v0.1.0 && git push origin v0.1.0
+# criar uma Release no GitHub a partir dessa tag -> dispara o workflow
+```
