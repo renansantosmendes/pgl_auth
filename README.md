@@ -73,8 +73,10 @@ antes de qualquer build/publish (job `test` em `publish.yml`).
 2. Configure as variáveis de ambiente do projeto no Vercel:
    - `NEON_DATABASE_URL`
    - `JWT_SECRET_KEY`
-3. Deploy automático a cada push (o Vercel detecta `api/login.py` + `api/requirements.txt`
-   via `vercel.json` e cria a função serverless em `/api/login`).
+3. Deploy automático a cada push — o Vercel detecta `api/login.py` + `api/requirements.txt`
+   automaticamente e cria a função serverless em `/api/login` (não é preciso `vercel.json`;
+   declarar `runtime` manualmente lá costuma quebrar com "Function Runtimes must have a
+   valid version" se a versão não for pinada).
 4. Atualize `DEFAULT_API_URL` em `src/pgl_auth/client.py` (ou oriente os alunos a definir
    `PGL_AUTH_API_URL`) com a URL final do deploy.
 
