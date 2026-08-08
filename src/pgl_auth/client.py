@@ -6,7 +6,7 @@ import requests
 
 from .exceptions import AuthenticationError, InactiveAccountError, PGLAuthError
 
-DEFAULT_API_URL = "https://pgl-auth.vercel.app/api/login"
+DEFAULT_API_URL = "https://pgl-auth-server.vercel.app/api/login"
 API_URL_ENV_VAR = "PGL_AUTH_API_URL"
 
 
