@@ -39,6 +39,3 @@ packages = ["src/pgl_auth"]
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
-
-[tool.vercel]
-entrypoint = "api.login:app"

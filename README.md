@@ -6,8 +6,10 @@ de curta duração (4 horas) para acesso ao proxy dos modelos de IA usado na dis
 ## Componentes deste repositório
 
 - `src/pgl_auth/` — pacote publicado no PyPI, instalado pelos alunos (`pip install pgl-auth`).
-- `api/login.py` — API serverless (FastAPI) hospedada no Vercel, valida matrícula/senha no
-  Postgres e emite o JWT. Nenhuma credencial do banco fica no pacote instalado pelos alunos.
+- `server/` — API serverless (FastAPI, `server/api/login.py`) hospedada no Vercel, valida
+  matrícula/senha no Postgres e emite o JWT. Fica isolada em sua própria pasta, sem nenhum
+  `pyproject.toml` por perto, de propósito (ver seção de deploy abaixo). Nenhuma credencial
+  do banco fica no pacote instalado pelos alunos.
 - `db/schema.sql` — schema `pgl_auth` e tabela `pgl_auth.students`.
 - `db/migrate.py` — aplica `schema.sql` no banco (usa `NEON_DATABASE_URL` do `.env`).
 - `db/create_student.py` — cria/atualiza a senha de um aluno (hash bcrypt).
@@ -69,18 +71,25 @@ antes de qualquer build/publish (job `test` em `publish.yml`).
 
 ## Deploy da API no Vercel
 
+A API vive isolada em `server/` (com seu próprio `server/requirements.txt`, sem nenhum
+`pyproject.toml` por perto) justamente para a Vercel não confundir as dependências da
+função serverless com as do pacote PyPI que fica na raiz do repositório — quando havia um
+`pyproject.toml` na raiz junto da API, a Vercel passou a instalar só as dependências do
+pacote (ex: `requests`) e ignorava o `requirements.txt`, quebrando o import de `bcrypt`
+em runtime.
+
 1. Importe este repositório no Vercel (Project → Add New → Project).
-2. Configure as variáveis de ambiente do projeto no Vercel:
+2. Em **Project Settings → General → Root Directory**, defina `server`. Isso faz a Vercel
+   tratar `server/` como raiz do projeto, enxergando `server/api/login.py` e
+   `server/requirements.txt` sem nunca ver o `pyproject.toml` do pacote.
+3. Configure as variáveis de ambiente do projeto no Vercel:
    - `NEON_DATABASE_URL`
    - `JWT_SECRET_KEY`
-3. Deploy automático a cada push — o Vercel detecta `api/login.py` automaticamente e cria
-   a função serverless em `/api/login`. As dependências da função ficam em `requirements.txt`
-   **na raiz do projeto** (a Vercel só lê o `requirements.txt` da raiz, não um dentro de `api/`).
-   Não é preciso `vercel.json`; declarar `runtime` manualmente lá costuma quebrar com
-   "Function Runtimes must have a valid version" se a versão não for pinada. Como agora a
-   raiz também tem o `pyproject.toml` do pacote PyPI, é preciso apontar o entrypoint da
-   função explicitamente — já configurado em `[tool.vercel]` no `pyproject.toml`.
-4. Atualize `DEFAULT_API_URL` em `src/pgl_auth/client.py` (ou oriente os alunos a definir
+4. Deploy automático a cada push — a Vercel detecta `api/login.py` (relativo ao Root
+   Directory) automaticamente e cria a função serverless em `/api/login`. Não é preciso
+   `vercel.json`; declarar `runtime` manualmente lá costuma quebrar com "Function Runtimes
+   must have a valid version" se a versão não for pinada.
+5. Atualize `DEFAULT_API_URL` em `src/pgl_auth/client.py` (ou oriente os alunos a definir
    `PGL_AUTH_API_URL`) com a URL final do deploy.
 
 ## Publicar o pacote no PyPI
