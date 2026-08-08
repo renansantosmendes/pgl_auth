@@ -1,3 +1,5 @@
+from importlib.metadata import PackageNotFoundError, version
+
 from .client import PGLAuthClient, login
 from .exceptions import PGLAuthError, AuthenticationError, InactiveAccountError
 
@@ -9,4 +11,7 @@ __all__ = [
     "InactiveAccountError",
 ]
 
-__version__ = "0.1.0"
+try:
+    __version__ = version("pgl-auth")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
