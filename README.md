@@ -53,6 +53,20 @@ python db/migrate.py                 # cria schema + tabela
 python db/create_student.py 2021012345   # cadastra/atualiza um aluno (pede a senha)
 ```
 
+## Testes
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+`tests/test_create_student.py` garante as regras de negócio do cadastro de senha
+(bloqueio se a matrícula não existir ou estiver inativa em `pgl_proxy.students`,
+e overwrite do registro existente em `pgl_auth.students`). `tests/test_client.py`
+cobre o cliente HTTP usado pelos alunos. Os testes rodam com dependências
+mockadas — não tocam no banco real — e são executados automaticamente no CI
+antes de qualquer build/publish (job `test` em `publish.yml`).
+
 ## Deploy da API no Vercel
 
 1. Importe este repositório no Vercel (Project → Add New → Project).

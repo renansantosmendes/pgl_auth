@@ -22,6 +22,10 @@ admin = [
     "python-dotenv>=1.0",
     "bcrypt>=4.2",
 ]
+dev = [
+    "pgl-auth[admin]",
+    "pytest>=8.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/renansantosmendes/pgl_auth"
@@ -31,3 +35,7 @@ pgl-auth = "pgl_auth.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgl_auth"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
