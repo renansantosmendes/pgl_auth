@@ -80,16 +80,23 @@ antes de qualquer build/publish (job `test` em `publish.yml`).
 
 ## Publicar o pacote no PyPI
 
-O workflow `.github/workflows/publish.yml` publica automaticamente quando uma **release**
-é criada no GitHub, usando [Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
-(OIDC) — não é preciso guardar token do PyPI como secret.
+O workflow `.github/workflows/publish.yml` roda a cada push na `main` (também em
+release/`workflow_dispatch`): testa, builda e publica no PyPI usando um **API token**
+guardado como secret do repositório.
 
-Configuração única no PyPI (depois que o projeto `pgl-auth` existir lá, ou via
-"pending publisher" antes do primeiro publish):
+Configuração única (uma vez só):
 
-1. pypi.org → Your projects → `pgl-auth` → Publishing → Add a new publisher.
-2. Owner: `renansantosmendes`, Repository: `pgl_auth`, Workflow: `publish.yml`,
-   Environment: `pypi`.
+1. pypi.org → Account settings → API tokens → **Add API token**.
+   - Se o projeto `pgl-auth` ainda não existe no PyPI, crie o token com escopo
+     "Entire account" (o escopo pode ser restrito ao projeto depois do primeiro publish).
+2. No GitHub: repo → Settings → Secrets and variables → Actions → **New repository secret**.
+   - Nome: `PYPI_API_TOKEN`
+   - Valor: o token gerado no passo anterior (começa com `pypi-`).
+3. Pronto — o job `publish` usa `secrets.PYPI_API_TOKEN` automaticamente.
+
+`skip-existing: true` faz o publish ser ignorado (sem falhar o job) quando a versão em
+`pyproject.toml` já foi publicada antes, então pushes na main sem bump de versão não
+quebram o CI.
 
 Para publicar uma nova versão:
 
