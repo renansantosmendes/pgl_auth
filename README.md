@@ -50,7 +50,7 @@ pgl-auth 2021012345              # loga e imprime o token
 | coluna          | tipo          | descrição                                   |
 |------------------|---------------|----------------------------------------------|
 | `id`             | UUID (PK)     | identificador único, gerado automaticamente   |
-| `matricula`      | TEXT (UNIQUE) | matrícula do aluno                            |
+| `registration_number` | TEXT (UNIQUE) | matrícula do aluno                      |
 | `password_hash`  | TEXT          | hash bcrypt da senha (nunca texto puro)       |
 | `is_active`      | BOOLEAN       | se o aluno pode autenticar                    |
 | `updated_at`     | TIMESTAMPTZ   | atualizado automaticamente via trigger         |

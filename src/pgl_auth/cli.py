@@ -12,7 +12,7 @@ def main() -> int:
         prog="pgl-auth",
         description="Cadastra a senha do aluno ou autentica e imprime o token de acesso.",
     )
-    parser.add_argument("matricula", nargs="?", help="Número de matrícula do aluno")
+    parser.add_argument("registration_number", nargs="?", help="Número de matrícula do aluno")
     parser.add_argument(
         "--register",
         action="store_true",
@@ -24,7 +24,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    matricula = args.matricula or input("Matrícula: ")
+    registration_number = args.registration_number or input("Matrícula: ")
 
     from .client import PGLAuthClient
 
@@ -38,7 +38,7 @@ def main() -> int:
             return 1
 
         try:
-            client.register(matricula, senha)
+            client.register(registration_number, senha)
         except PGLAuthError as exc:
             print(f"Erro: {exc}", file=sys.stderr)
             return 1
@@ -48,7 +48,7 @@ def main() -> int:
 
     senha = getpass.getpass("Senha: ")
     try:
-        token = client.login(matricula, senha)
+        token = client.login(registration_number, senha)
     except PGLAuthError as exc:
         print(f"Erro: {exc}", file=sys.stderr)
         return 1

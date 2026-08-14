@@ -24,7 +24,7 @@ class FakeResponse:
 
 def test_login_success_returns_token_and_stores_it(monkeypatch):
     def fake_post(url, json, timeout):
-        assert json == {"matricula": "202100001", "senha": "minha_senha"}
+        assert json == {"registration_number": "202100001", "senha": "minha_senha"}
         return FakeResponse(200, {"access_token": "token-abc", "expires_in": 14400})
 
     monkeypatch.setattr("pgl_auth.client.requests.post", fake_post)
@@ -62,7 +62,7 @@ def test_login_inactive_account_raises_inactive_account_error(monkeypatch):
 def test_register_success(monkeypatch):
     def fake_post(url, json, timeout):
         assert url == "https://example.test/api/register"
-        assert json == {"matricula": "202100001", "senha": "minha_senha"}
+        assert json == {"registration_number": "202100001", "senha": "minha_senha"}
         return FakeResponse(201, {"matricula": "202100001", "message": "ok"})
 
     monkeypatch.setattr("pgl_auth.client.requests.post", fake_post)
@@ -71,7 +71,7 @@ def test_register_success(monkeypatch):
     client.register("202100001", "minha_senha")  # does not raise
 
 
-def test_register_matricula_not_enrolled_raises_inactive_account_error(monkeypatch):
+def test_register_not_enrolled_raises_inactive_account_error(monkeypatch):
     monkeypatch.setattr(
         "pgl_auth.client.requests.post",
         lambda url, json, timeout: FakeResponse(403),
