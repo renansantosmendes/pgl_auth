@@ -25,7 +25,13 @@ pip install pgl-auth
 ```python
 from pgl_auth import PGLAuthClient
 
-client = PGLAuthClient()  # usa PGL_AUTH_API_URL ou o default do Vercel
+client = PGLAuthClient()  # usa PGL_AUTH_API_URL/PGL_AUTH_REGISTER_URL ou os defaults do Vercel
+
+# Só na primeira vez: cadastra a senha (a matrícula precisa já estar
+# ativa em pgl_proxy.students). Levanta AlreadyRegisteredError se essa
+# matrícula já tiver senha cadastrada.
+client.register("2021012345", "minha_senha")
+
 token = client.login("2021012345", "minha_senha")
 
 # usar o token para chamar o proxy dos modelos
@@ -35,7 +41,8 @@ headers = client.auth_header()  # {"Authorization": "Bearer <token>"}
 Ou via linha de comando:
 
 ```bash
-pgl-auth 2021012345
+pgl-auth 2021012345 --register   # cadastra a senha (só na primeira vez)
+pgl-auth 2021012345              # loga e imprime o token
 ```
 
 ## Estrutura da tabela `pgl_auth.students`

@@ -7,4 +7,8 @@ class AuthenticationError(PGLAuthError):
 
 
 class InactiveAccountError(PGLAuthError):
-    """Conta do aluno está inativa."""
+    """Conta do aluno está inativa, ou matrícula não encontrada/ativa na disciplina."""
+
+
+class AlreadyRegisteredError(PGLAuthError):
+    """A matrícula já possui uma senha cadastrada."""
