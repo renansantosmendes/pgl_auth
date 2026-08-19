@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pgl-auth"
-version = "0.3.0"
+version = "0.3.1"
 description = "Cliente de autenticação para alunos acessarem o proxy de modelos de IA da disciplina."
 readme = "README.md"
 requires-python = ">=3.9"

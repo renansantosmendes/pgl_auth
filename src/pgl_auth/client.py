@@ -33,7 +33,7 @@ class PGLAuthClient:
         self.timeout = timeout
         self._token: str | None = None
 
-    def register(self, registration_number: str, senha: str) -> None:
+    def register(self, registration_number: str, password: str) -> None:
         """Cadastra a senha do aluno pela primeira vez.
 
         Só funciona uma vez por matrícula: se ela já tiver uma senha
@@ -44,7 +44,7 @@ class PGLAuthClient:
         try:
             response = requests.post(
                 self.register_url,
-                json={"registration_number": registration_number, "senha": senha},
+                json={"registration_number": registration_number, "senha": password},
                 timeout=self.timeout,
             )
         except requests.RequestException as exc:
@@ -62,12 +62,12 @@ class PGLAuthClient:
         except requests.HTTPError as exc:
             raise PGLAuthError(f"Erro ao cadastrar: {exc}") from exc
 
-    def login(self, registration_number: str, senha: str) -> str:
+    def login(self, registration_number: str, password: str) -> str:
         """Autentica o aluno e retorna o token JWT (válido por 4 horas)."""
         try:
             response = requests.post(
                 self.api_url,
-                json={"registration_number": registration_number, "senha": senha},
+                json={"registration_number": registration_number, "senha": password},
                 timeout=self.timeout,
             )
         except requests.RequestException as exc:
@@ -98,11 +98,11 @@ class PGLAuthClient:
         return {"Authorization": f"Bearer {self._token}"}
 
 
-def register(registration_number: str, senha: str, register_url: str | None = None) -> None:
+def register(registration_number: str, password: str, register_url: str | None = None) -> None:
     """Atalho para cadastrar a senha sem instanciar PGLAuthClient diretamente."""
-    PGLAuthClient(register_url=register_url).register(registration_number, senha)
+    PGLAuthClient(register_url=register_url).register(registration_number, password)
 
 
-def login(registration_number: str, senha: str, api_url: str | None = None) -> str:
+def login(registration_number: str, password: str, api_url: str | None = None) -> str:
     """Atalho para autenticar sem instanciar PGLAuthClient diretamente."""
-    return PGLAuthClient(api_url=api_url).login(registration_number, senha)
+    return PGLAuthClient(api_url=api_url).login(registration_number, password)
