@@ -1,125 +1,202 @@
 # pgl_auth
 
-![Python](https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white) ![pytest](https://img.shields.io/badge/pytest-8.0-0A9EDC?logo=pytest&logoColor=white) ![requests](https://img.shields.io/badge/requests-2.31-2CA5E0) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-2.9-4169E1?logo=postgresql&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white) ![requests](https://img.shields.io/badge/requests-2.31+-2CA5E0) ![pytest](https://img.shields.io/badge/pytest-8.0+-0A9EDC?logo=pytest&logoColor=white) ![PyPI](https://img.shields.io/badge/PyPI-pgl--auth-3775A9?logo=pypi&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
-Pacote Python para autenticação de alunos (matrícula + senha) e emissão de um token JWT
-de curta duração (4 horas) para acesso ao proxy dos modelos de IA usado na disciplina.
+Cliente Python para a autenticação dos alunos da disciplina. Ele cadastra a senha, faz
+login e devolve o token JWT (válido por 4 horas) usado no proxy dos modelos de IA. Também
+cobre a troca e a redefinição de senha por e-mail, e a gestão da turma para professores.
 
-A API serverless que valida a matrícula/senha e emite o token (hospedada no Vercel) vive
-num repositório separado, [`pgl_auth_server`](../pgl_auth_server) — foi extraída daqui
-porque o `pyproject.toml` do pacote, na raiz deste repo, confundia a detecção de
-dependências da Vercel. Nenhuma credencial do banco fica no pacote instalado pelos alunos.
+A API que valida tudo vive no repositório [`pgl_auth_server`](../pgl_auth_server). Nenhuma
+credencial do banco fica no pacote instalado pelos alunos.
 
-## Componentes deste repositório
-
-- `src/pgl_auth/` — pacote publicado no PyPI, instalado pelos alunos (`pip install pgl-auth`).
-- `db/schema.sql` — schema `pgl_auth` e tabela `pgl_auth.students`.
-- `db/migrate.py` — aplica `schema.sql` no banco (usa `NEON_DATABASE_URL` do `.env`).
-- `db/create_student.py` — cria/atualiza a senha de um aluno (hash bcrypt).
-- `.github/workflows/publish.yml` — CI que publica o pacote no PyPI a cada release do GitHub.
-
-## Uso pelo aluno
+## Instalação
 
 ```bash
 pip install pgl-auth
 ```
 
+## Uso pelo aluno
+
+Cadastro: matrícula, e-mail institucional, senha e confirmação são todos obrigatórios.
+O e-mail precisa ser o que está no roster da disciplina.
+
 ```python
 from pgl_auth import PGLAuthClient
 
-client = PGLAuthClient()  # usa PGL_AUTH_API_URL/PGL_AUTH_REGISTER_URL ou os defaults do Vercel
+client = PGLAuthClient()
 
-# Só na primeira vez: cadastra a senha (a matrícula precisa já estar
-# ativa em pgl_proxy.students). Levanta AlreadyRegisteredError se essa
-# matrícula já tiver senha cadastrada.
-client.register("2021012345", "minha_senha")
+client.register(
+    "2021012345",
+    "2021012345@pucminas.edu.br",
+    "Minha@Senha2026",
+    "Minha@Senha2026",
+)
 
-token = client.login("2021012345", "minha_senha")
-
-# usar o token para chamar o proxy dos modelos
+token = client.login("2021012345", "Minha@Senha2026")
 headers = client.auth_header()  # {"Authorization": "Bearer <token>"}
 ```
 
-Ou via linha de comando:
+Troca de senha, sabendo a senha atual. A sessão continua aberta e os tokens antigos
+deixam de valer:
 
-```bash
-pgl-auth 2021012345 --register   # cadastra a senha (só na primeira vez)
-pgl-auth 2021012345              # loga e imprime o token
+```python
+client.change_password("Minha@Senha2026", "Outra@Senha2027")
 ```
 
-## Estrutura da tabela `pgl_auth.students`
+Esqueci a senha. O código de 6 dígitos vai para o e-mail institucional e vale 15 minutos:
 
-| coluna          | tipo          | descrição                                   |
-|------------------|---------------|----------------------------------------------|
-| `id`             | UUID (PK)     | identificador único, gerado automaticamente   |
-| `registration_number` | TEXT (UNIQUE) | matrícula do aluno                      |
-| `password_hash`  | TEXT          | hash bcrypt da senha (nunca texto puro)       |
-| `is_active`      | BOOLEAN       | se o aluno pode autenticar                    |
-| `updated_at`     | TIMESTAMPTZ   | atualizado automaticamente via trigger         |
-
-## Provisionar o banco
-
-```bash
-pip install -e ".[admin]"
-python db/migrate.py                 # cria schema + tabela
-python db/create_student.py 2021012345   # cadastra/atualiza um aluno (pede a senha)
+```python
+client.request_password_reset("2021012345")
+client.reset_password_with_code("2021012345", "123456", "Outra@Senha2027")
 ```
 
-## Testes
+Sessão salva em disco, para não pedir a senha em cada uso, e encerramento dela:
+
+```python
+from pgl_auth import PGLAuthClient, TokenCache
+
+client = PGLAuthClient(token_cache=TokenCache())
+client.login("2021012345", "Outra@Senha2027")       # salva ~/.pgl_auth/token.json
+
+client = PGLAuthClient(token_cache=TokenCache())
+client.restore_session("2021012345")                 # carrega o token salvo
+client.logout()                                      # revoga e apaga o arquivo
+```
+
+Versão assíncrona, para programas com `asyncio`:
+
+```python
+import asyncio
+from pgl_auth import AsyncPGLAuthClient
+
+async def main():
+    client = AsyncPGLAuthClient()
+    await client.login("2021012345", "Outra@Senha2027")
+
+asyncio.run(main())
+```
+
+Erros são exceções do pacote, todas derivadas de `PGLAuthError`:
+
+| Exceção | Quando acontece |
+| --- | --- |
+| `InvalidInputError` | Matrícula, e-mail ou senha fora das regras. A lista `problems` diz o que falhou. Nenhuma requisição é enviada. |
+| `AuthenticationError` | Matrícula ou senha incorretas. |
+| `InactiveAccountError` | Conta bloqueada, ou aluno não matriculado ou inativo. |
+| `AlreadyRegisteredError` | A matrícula já tem senha. |
+| `RateLimitedError` | Muitas tentativas erradas. A conta fica bloqueada por 15 minutos. |
+| `InvalidResetCodeError` | Código errado, vencido, ou com tentativas esgotadas. |
+| `SessionExpiredError` | Token ausente, vencido ou revogado. |
+| `PermissionDeniedError` | Ação restrita a professores. |
+
+## Uso pelo professor
+
+Professores fazem login normalmente. Depois, podem:
+
+```python
+client.list_students()                              # turma e estado de cada conta
+client.set_student_status("2021012345", False)      # bloqueia a conta
+client.send_invitations(["2021012345", "2021012346"])  # convida quem não tem senha
+client.reset_student_password("2021012345", "Nova@Senha2026")
+```
+
+## Linha de comando
+
+```bash
+pgl-auth 2021012345 --register            # cadastro (pede e-mail e senha, com dicas de regras)
+pgl-auth 2021012345                       # login, imprime o token
+pgl-auth 2021012345 --remember            # login e salva o token em ~/.pgl_auth/token.json
+pgl-auth 2021012345 --change-password     # troca a senha informando a atual
+pgl-auth 2021012345 --forgot-password     # envia o código para o e-mail institucional
+pgl-auth 2021012345 --reset-password      # define a senha com o código recebido
+pgl-auth 2021012345 --logout              # encerra a sessão salva
+```
+
+A senha digitada é checada na hora. Se ela não atender às regras, a CLI mostra cada regra
+descumprida e pede outra tentativa.
+
+## Regras de senha e de matrícula
+
+- **Matrícula:** só dígitos, de 5 a 20.
+- **Senha nova:** no mínimo 10 caracteres, no máximo 72 bytes, com maiúscula, minúscula,
+  número e símbolo. Não pode conter a matrícula nem ser uma senha muito comum.
+- **Senhas antigas:** continuam válidas no login. As regras valem só para senhas novas.
+
+## Fluxo de redefinição de senha
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Aluno
+    participant C as pgl_auth
+    participant S as pgl_auth_server
+    participant M as E-mail institucional
+    A->>C: request_password_reset(matrícula)
+    C->>S: POST /api/password/forgot
+    S-->>M: código de 6 dígitos (válido 15 min)
+    S-->>C: 202 (mesma resposta existindo ou não a matrícula)
+    A->>C: reset_password_with_code(matrícula, código, nova senha)
+    C->>C: valida a força da senha
+    C->>S: POST /api/password/reset
+    S-->>C: 200, sessões antigas revogadas
+```
+
+## Configuração
+
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `PGL_AUTH_BASE_URL` | `https://pgl-auth-server.vercel.app` | Base da API. |
+| `PGL_AUTH_API_URL` | `<base>/api/login` | Sobrescreve só o login. |
+| `PGL_AUTH_REGISTER_URL` | `<base>/api/register` | Sobrescreve só o cadastro. |
+
+Requisições que falham por conexão ou por erro 502, 503 ou 504 são repetidas até três
+vezes, com espera exponencial.
+
+## Componentes deste repositório
+
+- `src/pgl_auth/` — pacote publicado no PyPI.
+  - `client.py` — `PGLAuthClient`, o cliente síncrono.
+  - `async_client.py` — `AsyncPGLAuthClient`, a versão assíncrona.
+  - `validation.py` — regras de matrícula, e-mail e senha, iguais às do servidor.
+  - `token_cache.py` — `TokenCache`, o arquivo local com o token.
+  - `cli.py` — o comando `pgl-auth`.
+  - `exceptions.py` — hierarquia de erros.
+- `db/schema.sql` — schema `pgl_auth` e tabela `pgl_auth.students`.
+- `db/migrate.py` — aplica `schema.sql` no banco.
+- `db/create_student.py` — cria ou atualiza a senha de um aluno pelo terminal.
+- `.github/workflows/publish.yml` — CI que testa e publica no PyPI.
+
+O banco das tabelas de segurança (`token_version`, bloqueio, códigos e auditoria) é
+gerenciado pelo repositório `pgl_auth_server`, em `db/migrations/002_account_security.sql`.
+
+## Desenvolvimento
 
 ```bash
 pip install -e ".[dev]"
 pytest
 ```
 
-`tests/test_create_student.py` garante as regras de negócio do cadastro de senha
-(bloqueio se a matrícula não existir ou estiver inativa em `pgl_proxy.students`,
-e overwrite do registro existente em `pgl_auth.students`). `tests/test_client.py`
-cobre o cliente HTTP usado pelos alunos. Os testes rodam com dependências
-mockadas — não tocam no banco real — e são executados automaticamente no CI
-antes de qualquer build/publish (job `test` em `publish.yml`).
+Os testes usam mocks das requisições HTTP e não acessam a API nem o banco. Eles rodam no
+CI antes de qualquer publicação.
 
-## API e deploy no Vercel
+## Publicar uma versão
 
-A API (FastAPI, `POST /api/login`) e as instruções de deploy no Vercel ficam no
-repositório separado [`pgl_auth_server`](../pgl_auth_server) — veja o README de lá.
-Depois do deploy, atualize `DEFAULT_API_URL` em `src/pgl_auth/client.py` (ou oriente os
-alunos a definir `PGL_AUTH_API_URL`) com a URL final.
+O workflow `.github/workflows/publish.yml` testa, gera o pacote e publica no PyPI a cada
+push na `main` ou release. Ele usa o secret `PYPI_API_TOKEN` do repositório. Com
+`skip-existing: true`, um push sem aumento de versão não quebra o CI.
 
-## Publicar o pacote no PyPI
-
-O workflow `.github/workflows/publish.yml` roda a cada push na `main` (também em
-release/`workflow_dispatch`): testa, builda e publica no PyPI usando um **API token**
-guardado como secret do repositório.
-
-Configuração única (uma vez só):
-
-1. pypi.org → Account settings → API tokens → **Add API token**.
-   - Se o projeto `pgl-auth` ainda não existe no PyPI, crie o token com escopo
-     "Entire account" (o escopo pode ser restrito ao projeto depois do primeiro publish).
-2. No GitHub: repo → Settings → Secrets and variables → Actions → **New repository secret**.
-   - Nome: `PYPI_API_TOKEN`
-   - Valor: o token gerado no passo anterior (começa com `pypi-`).
-3. Pronto — o job `publish` usa `secrets.PYPI_API_TOKEN` automaticamente.
-
-`skip-existing: true` faz o publish ser ignorado (sem falhar o job) quando a versão em
-`pyproject.toml` já foi publicada antes, então pushes na main sem bump de versão não
-quebram o CI.
-
-Para publicar uma nova versão:
-
-```bash
-# atualizar version em pyproject.toml
-git tag v0.1.0 && git push origin v0.1.0
-# criar uma Release no GitHub a partir dessa tag -> dispara o workflow
-```
+Antes de publicar, atualize `version` em `pyproject.toml`. Publique a nova versão somente
+depois que a API nova estiver no ar, porque versões antigas enviam senhas que a validação
+nova do servidor rejeita.
 
 ## Architecture overview
 
 ```mermaid
 flowchart LR
-    repo["pgl_auth"]
-    repo --> d0["db/"]
-    repo --> d1["src/"]
-    repo --> d2["tests/"]
+    aluno["Aluno ou professor"] --> cli["pgl-auth (CLI)"]
+    aluno --> lib["PGLAuthClient<br/>AsyncPGLAuthClient"]
+    cli --> lib
+    lib --> valid["validation.py"]
+    lib --> cache["TokenCache<br/>~/.pgl_auth/token.json"]
+    lib -->|HTTPS| api["pgl_auth_server"]
 ```
