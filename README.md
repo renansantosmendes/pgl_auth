@@ -1,5 +1,7 @@
 # pgl_auth
 
+![Python](https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white) ![pytest](https://img.shields.io/badge/pytest-8.0-0A9EDC?logo=pytest&logoColor=white) ![requests](https://img.shields.io/badge/requests-2.31-2CA5E0) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-2.9-4169E1?logo=postgresql&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
+
 Pacote Python para autenticação de alunos (matrícula + senha) e emissão de um token JWT
 de curta duração (4 horas) para acesso ao proxy dos modelos de IA usado na disciplina.
 
@@ -110,4 +112,14 @@ Para publicar uma nova versão:
 # atualizar version em pyproject.toml
 git tag v0.1.0 && git push origin v0.1.0
 # criar uma Release no GitHub a partir dessa tag -> dispara o workflow
+```
+
+## Architecture overview
+
+```mermaid
+flowchart LR
+    repo["pgl_auth"]
+    repo --> d0["db/"]
+    repo --> d1["src/"]
+    repo --> d2["tests/"]
 ```
