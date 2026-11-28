@@ -43,7 +43,7 @@ def test_register_flow_collects_email_and_confirmation(monkeypatch, prompts, cap
     assert code == 0
     assert script.calls[0]["json"]["email"] == "aluno@pucminas.edu.br"
     assert script.calls[0]["json"]["senha_confirmacao"] == STRONG
-    assert "cadastrada com sucesso" in capsys.readouterr().out
+    assert "Confirmation link sent" in capsys.readouterr().out
 
 
 def test_register_shows_the_rules_a_weak_password_breaks(monkeypatch, prompts, capsys):

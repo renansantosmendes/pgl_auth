@@ -388,3 +388,11 @@ def test_endpoints_follow_the_base_url_by_default(monkeypatch):
 
     assert client.api_url == "https://pgl-auth-server.vercel.app/api/login"
     assert client.register_url == "https://pgl-auth-server.vercel.app/api/register"
+
+
+def test_register_accepts_the_confirmation_pending_response(monkeypatch):
+    script = Script(monkeypatch, [FakeResponse(202, {"message": "Confirmation link sent."})])
+
+    make_client().register("202100001", "aluno@pucminas.edu.br", STRONG, STRONG)
+
+    assert len(script.calls) == 1
