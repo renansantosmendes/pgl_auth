@@ -113,7 +113,9 @@ class PGLAuthClient:
     ) -> None:
         """Create the password of an enrolled student for the first time.
 
-        All four values are mandatory. The e-mail must be the institutional
+        All four values are mandatory. The server does not create the account at
+        once: it e-mails a confirmation link, valid for 10 minutes, and the
+        account exists only after the student opens that link. The e-mail must be the institutional
         address registered on the course roster. The password must follow
         the strength rules, which are checked here before the request.
 
@@ -155,7 +157,7 @@ class PGLAuthClient:
                 "senha_confirmacao": password_confirmation,
             },
         )
-        if response.status_code == 201:
+        if response.status_code in (201, 202):
             return
         if response.status_code == 403:
             raise InactiveAccountError(self._detail(response, "Cadastro não permitido."))

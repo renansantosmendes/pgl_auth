@@ -17,6 +17,10 @@ pip install pgl-auth
 
 ## Uso pelo aluno
 
+O cadastro não ativa a conta na hora: o servidor envia um link de confirmação
+para o e-mail institucional, válido por 10 minutos. A conta só existe depois que o
+aluno abre o link. Até lá, o login retorna erro.
+
 Cadastro: matrícula, e-mail institucional, senha e confirmação são todos obrigatórios.
 O e-mail precisa ser o que está no roster da disciplina.
 

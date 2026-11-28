@@ -110,7 +110,10 @@ def run_register(client: PGLAuthClient, registration_number: str) -> int:
         return _fail("Nenhuma senha válida foi informada.")
     confirmation = prompt_confirmation()
     client.register(registration_number, email, senha, confirmation)
-    print("Senha cadastrada com sucesso. Rode `pgl-auth` para entrar.")
+    print(
+        "Confirmation link sent to your institutional e-mail. Open it within "
+        "10 minutes to finish the sign-up, then run `pgl-auth` to log in."
+    )
     return 0
 
 
